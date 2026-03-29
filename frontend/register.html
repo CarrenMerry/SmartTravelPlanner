@@ -79,6 +79,8 @@
 </head>
 <body>
 
+    <div class="notification-container" id="notificationContainer"></div>
+
     <div class="auth-page position-relative">
         <!-- Back Button -->
         <a href="javascript:history.back()" aria-label="Go Back" class="floating-back-btn">
@@ -115,8 +117,6 @@
                     </div>
                 </div>
                 
-                <div id="regError" class="text-danger mb-3 text-center" style="display: none; font-size: 0.9rem;"></div>
-
                 <button type="submit" class="btn-explore w-100 justify-content-center border-0 mb-4" style="padding: 14px;">Register</button>
                 
                 <p class="text-center text-white-50 mb-0">
@@ -127,17 +127,52 @@
     </div>
 
     <script>
+        function showNotification(message, type = 'error') {
+            const container = document.getElementById('notificationContainer');
+            const toast = document.createElement('div');
+            toast.className = `notification-toast ${type}`;
+            toast.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    ${type === 'error' 
+                        ? '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>' 
+                        : '<polyline points="20 6 9 17 4 12"/>'}
+                </svg>
+                <span>${message}</span>
+            `;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-20px) scale(0.95)';
+                setTimeout(() => toast.remove(), 400);
+            }, 4000);
+        }
+
+        function validateEmail(email) {
+            return String(email)
+                .toLowerCase()
+                .match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
+        }
+
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('regName').value;
             const email = document.getElementById('regEmail').value;
             const password = document.getElementById('regPassword').value;
             const confirmPassword = document.getElementById('regConfirmPassword').value;
-            const errorDiv = document.getElementById('regError');
+
+            if (!validateEmail(email)) {
+                showNotification("Please enter a valid email address.");
+                return;
+            }
 
             if (password !== confirmPassword) {
-                errorDiv.textContent = "Passwords do not match.";
-                errorDiv.style.display = "block";
+                showNotification("Passwords do not match.");
+                return;
+            }
+
+            if (password.length < 6) {
+                showNotification("Password must be at least 6 characters long.");
                 return;
             }
 
@@ -151,17 +186,15 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    // Registration successful, log user in and redirect
+                    showNotification("Account created successfully!", "success");
                     localStorage.setItem('user', JSON.stringify(data.user));
-                    window.location.href = 'index.html';
+                    setTimeout(() => window.location.href = 'index.html', 1500);
                 } else {
-                    errorDiv.textContent = data.error || "Registration failed.";
-                    errorDiv.style.display = "block";
+                    showNotification(data.error || "Registration failed.");
                 }
             } catch (err) {
                 console.error(err);
-                errorDiv.textContent = "Unable to connect to server.";
-                errorDiv.style.display = "block";
+                showNotification("Unable to connect to the server.");
             }
         });
     </script>

@@ -54,46 +54,88 @@ function initApp() {
             nav.classList.remove('scrolled');
         }
 
-        // Active link highlighting
+        // Active link highlighting - find the current active section
         const sections = document.querySelectorAll('main, section');
-        const scrollPos = window.scrollY + nav.offsetHeight + 20;
+        let currentId = '';
+        const navHeight = nav.offsetHeight;
         
         sections.forEach(section => {
-            if (scrollPos >= section.offsetTop && scrollPos < (section.offsetTop + section.offsetHeight)) {
-                let id = section.getAttribute('id');
-                
-                document.querySelectorAll('.navbar-nav a.nav-link').forEach(a => {
-                    a.classList.remove('active', 'text-white', 'fw-medium');
-                    a.classList.add('text-white-50');
-                    
-                    const href = a.getAttribute('href');
-                    if (id && href === `#${id}`) {
-                        a.classList.remove('text-white-50');
-                        a.classList.add('active', 'text-white', 'fw-medium');
-                    } else if (!id && section.tagName.toLowerCase() === 'main' && href === '#') {
-                        a.classList.remove('text-white-50');
-                        a.classList.add('active', 'text-white', 'fw-medium');
-                    }
-                });
+            const sectionTop = section.offsetTop - navHeight - 100; // Offset for better detection
+            if (window.scrollY >= sectionTop) {
+                currentId = section.getAttribute('id');
+            }
+        });
+
+        // Force last section to be active if at the bottom of the page
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 50) {
+            const lastSection = Array.from(sections).filter(s => s.id).pop();
+            if (lastSection) currentId = lastSection.id;
+        }
+
+        // Update all links
+        document.querySelectorAll('.navbar-nav a.nav-link').forEach(a => {
+            const href = a.getAttribute('href');
+            a.classList.remove('active', 'text-white', 'fw-medium');
+            a.classList.add('text-white-50');
+            
+            if (currentId && href === `#${currentId}`) {
+                a.classList.remove('text-white-50');
+                a.classList.add('active', 'text-white', 'fw-medium');
+            } else if (!currentId && href === '#') {
+                a.classList.remove('text-white-50');
+                a.classList.add('active', 'text-white', 'fw-medium');
             }
         });
     });
 
-    // Smooth Scrolling for Navbar Links
-    document.querySelectorAll('.navbar-nav a[href^="#"]').forEach(anchor => {
+    // 🎬 Cinematic Smooth Scroll (requestAnimationFrame + easing)
+    console.log("SmartTravel: Cinematic scroll active");
+
+    /**
+     * Easing function: easeInOutQuad
+     * t: current time, b: beginning value, c: change in value, d: duration
+     */
+    function easeInOutQuad(t, b, c, d) {
+        t /= d / 2;
+        if (t < 1) return (c / 2) * t * t + b;
+        t--;
+        return (-c / 2) * (t * (t - 2) - 1) + b;
+    }
+
+    /**
+     * Custom Smooth Scroll using requestAnimationFrame
+     */
+    function smoothScrollTo(targetY, duration = 800) {
+        const startY = window.pageYOffset;
+        const distance = targetY - startY;
+        let startTime = null;
+
+        function animation(currentTime) {
+            if (startTime === null) startTime = currentTime;
+            const timeElapsed = currentTime - startTime;
+            const run = easeInOutQuad(timeElapsed, startY, distance, duration);
+            window.scrollTo(0, run);
+            if (timeElapsed < duration) requestAnimationFrame(animation);
+        }
+
+        requestAnimationFrame(animation);
+    }
+
+    // Intercept all anchor clicks
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function(e) {
-            e.preventDefault();
             const targetId = this.getAttribute('href');
-            if (targetId === '#') {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                return;
-            }
-            const targetSection = document.querySelector(targetId);
-            if (targetSection) {
+            e.preventDefault();
+
+            let targetY = 0;
+            if (targetId !== '#') {
+                const targetElement = document.querySelector(targetId);
+                if (!targetElement) return;
                 const navHeight = document.querySelector('.navbar').offsetHeight;
-                const targetPosition = targetSection.getBoundingClientRect().top + window.scrollY - navHeight;
-                window.scrollTo({ top: targetPosition, behavior: 'smooth' });
+                targetY = targetElement.getBoundingClientRect().top + window.pageYOffset - navHeight;
             }
+
+            smoothScrollTo(targetY, 800);
         });
     });
 
@@ -277,22 +319,45 @@ function checkAuthStatus() {
     if (userStr) {
         try {
             const user = JSON.parse(userStr);
+            if (!user || !user.name) {
+                 // Invalid user object, clear it
+                 localStorage.removeItem('user');
+                 return;
+            }
+
             const authSection = document.querySelector('.auth-buttons');
             if (authSection) {
                 authSection.classList.remove('auth-buttons');
                 authSection.classList.add('profile-section');
                 authSection.innerHTML = `
-                    <span class="text-white me-3 d-none d-lg-block">Welcome, ${user.name}</span>
-                    <a href="dashboard.html" class="avatar-circle d-block text-decoration-none">
-                        <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=0D8ABC&color=fff" alt="${user.name}" class="img-fluid rounded-circle">
-                    </a>
+                    <div class="d-flex align-items-center">
+                        <span class="text-white me-3 d-none d-lg-block">Welcome, ${user.name}</span>
+                        <div class="dropdown">
+                            <a href="#" class="avatar-circle d-block text-decoration-none dropdown-toggle no-caret" data-bs-toggle="dropdown">
+                                <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=0D8ABC&color=fff" alt="${user.name}" class="img-fluid rounded-circle" style="width: 40px; height: 40px;">
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end bg-dark border-secondary mt-2 shadow">
+                                <li><a class="dropdown-item text-white hover-blue" href="dashboard.html">Dashboard</a></li>
+                                <li><hr class="dropdown-divider border-secondary"></li>
+                                <li><a class="dropdown-item text-danger" href="#" id="logoutBtn">Logout</a></li>
+                            </ul>
+                        </div>
+                    </div>
                 `;
+
+                // Add Logout Event
+                document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    localStorage.removeItem('user');
+                    window.location.reload();
+                });
             }
             
             // Prevent login popup if user is logged in
             localStorage.setItem('hideSmartTravelLoginPopup', 'true');
         } catch (e) {
-            console.error("Error parsing user data");
+            console.error("Error parsing user data", e);
+            localStorage.removeItem('user');
         }
     }
 }
