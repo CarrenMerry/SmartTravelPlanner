@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan a Trip | Smart Travel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="bg-overlay" style="z-index:-1; background: linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.8));"></div>
+    <div style="position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:-2; background: url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&q=80&w=2000') no-repeat center; background-size: cover; filter: brightness(0.6);"></div>
+    
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg fixed-top glass-navbar">
+        <div class="container-fluid px-4 px-lg-5">
+            <a class="navbar-brand fw-bold text-white fs-4" href="index.html">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="me-2 mb-1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 22l10-4 10 4L12 2z"/></svg>
+                SmartTravel
+            </a>
+            <div class="d-flex align-items-center profile-section ms-auto">
+                <span class="text-white me-3 d-none d-lg-block">Hello, User</span>
+                <div class="avatar-circle">
+                    <img src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="User" class="img-fluid rounded-circle">
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container d-flex align-items-center justify-content-center" style="min-height: 100vh; padding-top: 100px;">
+        <div class="col-md-8 col-lg-6 w-100" style="background: rgba(255,255,255,0.05); backdrop-filter: blur(15px); padding: 40px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+            <h2 class="fw-bold mb-4 text-white text-center">Design Your Experience</h2>
+            <form id="planForm">
+                <div class="mb-3">
+                    <label class="text-light mb-2 fw-semibold">Select Destination</label>
+                    <select id="destination" class="form-control bg-dark text-white border-secondary" required style="cursor:pointer">
+                        <option value="">Loading destinations...</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="text-light mb-2 fw-semibold">Duration (Days)</label>
+                        <input type="number" id="days" class="form-control bg-dark text-white border-secondary" min="1" value="7" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="text-light mb-2 fw-semibold">Budget ($)</label>
+                        <input type="number" id="budget" class="form-control bg-dark text-white border-secondary" min="100" value="2000" required>
+                    </div>
+                </div>
+                <div class="mb-5">
+                    <label class="text-light mb-2 fw-semibold">Travel Style Preference</label>
+                    <select id="preference" class="form-control bg-dark text-white border-secondary" required style="cursor:pointer">
+                        <option value="adventure">Adventure & Thrill</option>
+                        <option value="relaxation">Relaxation & Wellness</option>
+                        <option value="cultural">Cultural Immersion</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-explore w-100 justify-content-center py-3 fs-5" id="submitBtn">Generate Itinerary</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const res = await fetch('http://localhost:5000/api/destinations');
+                const destinations = await res.json();
+                const select = document.getElementById('destination');
+                select.innerHTML = '<option value="">Choose a destination...</option>';
+                destinations.forEach(d => {
+                    select.innerHTML += `<option value="${d.name}">${d.name} (${d.country})</option>`;
+                });
+            } catch (e) {
+                console.error('Failed to load destinations', e);
+            }
+        });
+
+        document.getElementById('planForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.innerHTML = 'Generating... <span class="spinner-border spinner-border-sm ms-2"></span>';
+            btn.disabled = true;
+
+            const payload = {
+                destination: document.getElementById('destination').value,
+                days: document.getElementById('days').value,
+                budget: document.getElementById('budget').value,
+                preference: document.getElementById('preference').value
+            };
+
+            try {
+                const res = await fetch('http://localhost:5000/api/generate-trip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    sessionStorage.setItem('tripResults', JSON.stringify(data));
+                    window.location.href = 'results.html';
+                } else {
+                    alert(data.error || 'Something went wrong');
+                    btn.innerHTML = 'Generate Itinerary';
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                alert('Server Error. Ensure backend is running.');
+                btn.innerHTML = 'Generate Itinerary';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register | Smart Travel Planner</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .auth-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.8) 100%), url('https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&q=80&w=2000') no-repeat center center/cover;
+            padding: 2rem;
+        }
+
+        .glass-auth-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 3rem;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            animation: slideUpFade 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+
+        .auth-title {
+            font-weight: 700;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: #fff;
+            text-align: center;
+        }
+
+        .auth-subtitle {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 2.5rem;
+            font-size: 0.95rem;
+        }
+
+        .auth-link {
+            color: #00d2ff;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .auth-link:hover {
+            color: #fff;
+        }
+
+        .logo-top {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+        @keyframes slideUpFade {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="auth-page position-relative">
+        <!-- Back Button -->
+        <a href="javascript:history.back()" aria-label="Go Back" class="floating-back-btn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        </a>
+        <div class="glass-auth-card">
+            <div class="logo-top">
+                <a href="index.html" class="text-white fw-bold d-flex align-items-center text-decoration-none fs-4">
+                    <span class="logo-icon bg-white text-dark rounded-circle me-2 d-flex justify-content-center align-items-center" style="width:36px; height:36px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 22l10-4 10 4 10-20-20 0z" />
+                        </svg>
+                    </span>
+                    SmartTravel
+                </a>
+            </div>
+            
+            <h2 class="auth-title">Create Account</h2>
+            <p class="auth-subtitle">Join us and start planning your next luxury getaway.</p>
+
+            <form id="registerForm">
+                <div class="mb-3">
+                    <input type="text" id="regName" class="glass-input" placeholder="Full Name" required>
+                </div>
+                <div class="mb-3">
+                    <input type="email" id="regEmail" class="glass-input" placeholder="Email Address" required>
+                </div>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <input type="password" id="regPassword" class="glass-input" placeholder="Password" required>
+                    </div>
+                    <div class="col-md-6">
+                        <input type="password" id="regConfirmPassword" class="glass-input" placeholder="Confirm Password" required>
+                    </div>
+                </div>
+                
+                <div id="regError" class="text-danger mb-3 text-center" style="display: none; font-size: 0.9rem;"></div>
+
+                <button type="submit" class="btn-explore w-100 justify-content-center border-0 mb-4" style="padding: 14px;">Register</button>
+                
+                <p class="text-center text-white-50 mb-0">
+                    Already have an account? <a href="login.html" class="auth-link">Login</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const confirmPassword = document.getElementById('regConfirmPassword').value;
+            const errorDiv = document.getElementById('regError');
+
+            if (password !== confirmPassword) {
+                errorDiv.textContent = "Passwords do not match.";
+                errorDiv.style.display = "block";
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Registration successful, log user in and redirect
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    window.location.href = 'index.html';
+                } else {
+                    errorDiv.textContent = data.error || "Registration failed.";
+                    errorDiv.style.display = "block";
+                }
+            } catch (err) {
+                console.error(err);
+                errorDiv.textContent = "Unable to connect to server.";
+                errorDiv.style.display = "block";
+            }
+        });
+    </script>
+</body>
+</html>
