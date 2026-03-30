@@ -285,6 +285,17 @@
             display: flex;
         }
 
+        .field-icon.currency-symbol {
+            min-width: 30px;
+            justify-content: center;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .plan-input.currency-input {
+            padding-left: 62px;
+        }
+
         .plan-input {
             width: 100%;
             background: rgba(255,255,255,0.06);
@@ -600,13 +611,13 @@
                         </div>
                         <div class="field-group" style="margin-bottom:0;">
                             <input
-                                class="plan-input"
+                                class="plan-input currency-input"
                                 type="number"
                                 id="budgetInput"
                                 placeholder="Budget (USD)"
                                 min="100"
                             />
-                            <span class="field-icon">
+                            <span class="field-icon currency-symbol">
                                 <span data-currency-symbol style="font-size: 1.1rem; font-weight: 700; line-height: 1;">$</span>
                             </span>
                         </div>

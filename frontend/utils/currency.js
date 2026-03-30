@@ -20,7 +20,7 @@
         INR: '₹',
         EUR: '€',
         GBP: '£',
-        AED: 'د.إ',
+        AED: 'AED',
         CAD: 'C$',
         AUD: 'A$'
     };
@@ -120,7 +120,7 @@
 
     function formatPrice(amountUSD, targetCurrency) {
         const currency = targetCurrency || getCurrency();
-        return `${getCurrencySymbol(currency)}${formatAmount(convertPrice(amountUSD, currency))}`;
+        return `${getCurrencySymbol(currency)} ${formatAmount(convertPrice(amountUSD, currency))}`;
     }
 
     function updateBudgetInputHint() {

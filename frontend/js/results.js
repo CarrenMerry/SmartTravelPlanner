@@ -145,10 +145,10 @@ function renderItineraryPackages(data) {
                             </div>
                         </div>
 
-                        <div class="d-flex justify-content-between align-items-center mb-4 mt-auto">
-                            <div>
+                        <div class="result-footer mb-4 mt-auto">
+                            <div class="result-total-block">
                                 <div class="text-white-50 x-small">Total Estimate</div>
-                                <div class="fs-2 fw-bold text-success" data-price="${option.totalCost || breakdown.total || 0}"></div>
+                                <div class="fs-2 fw-bold text-success result-total-price" data-price="${option.totalCost || breakdown.total || 0}"></div>
                             </div>
                             <button class="btn-view-plan" onclick="viewFullPlan(${index})">
                                 <span>View Full Plan</span>
