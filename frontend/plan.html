@@ -63,13 +63,17 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
+            const params = new URLSearchParams(window.location.search);
+            const preselectedDest = params.get('destination');
+
             try {
                 const res = await fetch('http://localhost:5000/api/destinations');
                 const destinations = await res.json();
                 const select = document.getElementById('destination');
                 select.innerHTML = '<option value="">Choose a destination...</option>';
                 destinations.forEach(d => {
-                    select.innerHTML += `<option value="${d.name}">${d.name} (${d.country})</option>`;
+                    const isSelected = (preselectedDest && (d.name.includes(preselectedDest) || preselectedDest.includes(d.name))) ? 'selected' : '';
+                    select.innerHTML += `<option value="${d.name}" ${isSelected}>${d.name} (${d.country})</option>`;
                 });
             } catch (e) {
                 console.error('Failed to load destinations', e);

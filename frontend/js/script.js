@@ -32,12 +32,19 @@ const destinations = [
 let currentIndex = 0;
 let autoSlideInterval;
 const SLIDE_DURATION = 3500; // 3.5 seconds
+let isMoving = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     initApp();
 });
 
 function initApp() {
+    // Restore state from last viewed destination
+    const savedIndex = localStorage.getItem('smartTravel_currentIndex');
+    if (savedIndex !== null) {
+        currentIndex = parseInt(savedIndex);
+    }
+
     renderBackgrounds();
     renderHeroText();
     renderCards();
@@ -187,24 +194,28 @@ function renderBackgrounds() {
 
 function renderHeroText() {
     const heroTextContainer = document.getElementById('hero-text-container');
-    heroTextContainer.innerHTML = destinations.map((dest, index) => `
-        <div class="text-layer" id="text-${index}">
-            <h1 class="hero-title">${dest.country}</h1>
-            <p class="hero-subtitle">${dest.description}</p>
-            <button class="btn-explore">
-                Explore 
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="ms-2">
-                    <path d="M5 12h14M12 5l7 7-7 7"/>
-                </svg>
-            </button>
-        </div>
-    `).join('');
+    heroTextContainer.innerHTML = destinations.map((dest, index) => {
+        // Extract first word of destination name for the button
+        const destinationMainName = dest.name.split(',')[0];
+        return `
+            <div class="text-layer" id="text-${index}">
+                <h1 class="hero-title">${dest.country}</h1>
+                <p class="hero-subtitle">${dest.description}</p>
+                <button class="btn-explore" onclick="navigateToDestination('${dest.name}')">
+                    Plan Trip to ${destinationMainName}
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="ms-2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </button>
+            </div>
+        `;
+    }).join('');
 }
 
 function renderCards() {
     const carouselContainer = document.getElementById('carousel-container');
     carouselContainer.innerHTML = destinations.map((dest, index) => `
-        <div class="destination-card" id="card-${index}" onclick="goToSlide(${index})">
+        <div class="destination-card" id="card-${index}" onclick="handleCardClick(${index}, '${dest.name}')">
             <img src="${dest.image}" alt="${dest.name}" class="card-img">
             <div class="card-glass-overlay">
                 <div class="card-info-wrapper">
@@ -279,8 +290,11 @@ function updateUI(initial = false) {
 }
 
 function nextSlide(manual = true) {
+    if (isMoving) return;
+    isMoving = true;
     currentIndex = (currentIndex + 1) % destinations.length;
     updateUI();
+    setTimeout(() => { isMoving = false; }, 800);
     if (manual) {
         pauseAutoSlide();
         startAutoSlide();
@@ -288,8 +302,11 @@ function nextSlide(manual = true) {
 }
 
 function prevSlide(manual = true) {
+    if (isMoving) return;
+    isMoving = true;
     currentIndex = (currentIndex - 1 + destinations.length) % destinations.length;
     updateUI();
+    setTimeout(() => { isMoving = false; }, 800);
     if (manual) {
         pauseAutoSlide();
         startAutoSlide();
@@ -303,6 +320,36 @@ function goToSlide(index) {
     // Reset timer
     pauseAutoSlide();
     startAutoSlide();
+}
+
+/**
+ * Handle navigation to destination detail page
+ */
+function navigateToDestination(name) {
+    // Save current slider state
+    localStorage.setItem('smartTravel_currentIndex', currentIndex.toString());
+    
+    // Map full names to simple database keys
+    const nameMap = {
+        "Nusa Penida, Bali": "Bali",
+        "Phi Phi Islands": "Phi Phi Islands",
+        "Male Atoll": "Male Atoll",
+        "Kyoto": "Kyoto"
+    };
+    const key = nameMap[name] || name;
+    window.location.href = `destination.html?place=${encodeURIComponent(key)}`;
+}
+
+/**
+ * Handle card click: if active, navigate; if not, slide to it.
+ */
+function handleCardClick(index, name) {
+    if (isMoving) return;
+    if (index === currentIndex) {
+        navigateToDestination(name);
+    } else {
+        goToSlide(index);
+    }
 }
 
 function startAutoSlide() {
