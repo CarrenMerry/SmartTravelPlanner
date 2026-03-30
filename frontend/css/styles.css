@@ -125,6 +125,76 @@ body {
     box-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
 }
 
+.currency-selector {
+    position: relative;
+}
+
+.currency-btn {
+    min-width: 78px;
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(15, 23, 42, 0.62);
+    color: #fff;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    transition: all 0.25s ease;
+}
+
+.currency-btn:hover {
+    border-color: rgba(0, 210, 255, 0.45);
+    box-shadow: 0 0 18px rgba(0, 210, 255, 0.18);
+}
+
+.currency-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    min-width: 120px;
+    padding: 8px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+    z-index: 1200;
+}
+
+.currency-dropdown.hidden {
+    display: none;
+}
+
+.currency-dropdown div {
+    padding: 10px 12px;
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.86);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.currency-dropdown div:hover {
+    background: rgba(0, 210, 255, 0.12);
+    color: #fff;
+}
+
+.currency-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.currency-budget-hint {
+    margin-top: 14px;
+    color: rgba(255, 255, 255, 0.56);
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+
 /* =========================================
    PROGRESS INDICATOR (LEFT)
 ========================================= */
@@ -794,3 +864,180 @@ body {
     .notification-container { top: 20px; }
     .notification-toast { font-size: 0.85rem; padding: 12px 20px; }
 }
+
+/* =========================================
+   PROFESSIONAL TRAVEL PLANNER UI
+========================================= */
+
+/* Highlight Pills */
+.highlights-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.h-pill {
+    background: rgba(0, 210, 255, 0.1);
+    border: 1px solid rgba(0, 210, 255, 0.2);
+    color: #00d2ff;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* Mini Breakdown */
+.mini-breakdown {
+    display: flex;
+    gap: 15px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 12px;
+    border-radius: 12px;
+}
+
+.b-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.b-item svg {
+    color: #00d2ff;
+}
+
+/* View Plan Button */
+.btn-view-plan {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.btn-view-plan:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #00d2ff;
+}
+
+.btn-view-plan svg {
+    transition: transform 0.3s ease;
+}
+
+/* Itinerary Details Section */
+.itinerary-details {
+    margin-top: 10px;
+}
+
+.section-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #00d2ff;
+    margin-bottom: 20px;
+}
+
+/* Logistics Grid */
+.logistics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 15px;
+}
+
+.log-item {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 12px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+.log-item .label {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.log-item .val {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.log-item .cost {
+    font-size: 0.7rem;
+    color: #00d2ff;
+}
+
+/* Timeline Components */
+.day-block {
+    position: relative;
+    padding-left: 20px;
+}
+
+.day-number {
+    background: #00d2ff;
+    color: #0f172a;
+    padding: 4px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.activity-slot {
+    margin-top: 15px;
+    padding: 10px 15px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    border-left: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.activity-slot:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.activity-slot.morning { border-left-color: #fbbf24; } /* Amber */
+.activity-slot.afternoon { border-left-color: #60a5fa; } /* Blue */
+.activity-slot.evening { border-left-color: #a78bfa; } /* Purple */
+
+.slot-label {
+    display: block;
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.slot-content {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Results Card Overrides */
+.result-card {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 30px;
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.result-card.highlight {
+    border-color: rgba(0, 210, 255, 0.5);
+    box-shadow: 0 0 30px rgba(0, 210, 255, 0.2);
+}
+
+.x-small { font-size: 0.7rem; }

@@ -1,48 +1,48 @@
 const destinationsData = {
-    "Bali": {
-        name: "Nusa Penida, Bali",
-        country: "INDONESIA",
-        image: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&q=80&w=2000",
-        heroSubtitle: "Discover the emerald of the equator, endless pristine beaches, and vibrant cultural heritage spanning thousands of islands.",
-        description: "Bali is a land that seems to have a magnet at its very heart. It is a feeling that is difficult to understand unless you have experienced it. It is one of those places where you can't help but feel like you belong. From lush rice terraces to world-class surfing, Bali offers a spiritual and tropical escape like nowhere else on Earth.",
-        bestTime: "April to October",
-        budget: "$1,200 - $3,000",
-        locations: "Ubud, Kuta, Seminyak, Nusa Dua",
+    "Paris": {
+        name: "Paris",
+        country: "FRANCE",
+        image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=2000",
+        heroSubtitle: "Stroll through elegant avenues, landmark museums, and riverfront neighborhoods full of character.",
+        description: "Paris blends monumental architecture, celebrated art, neighborhood cafes, and centuries of culture into one of the most rewarding city escapes in the world. From the Seine to Montmartre, every district offers its own texture and rhythm.",
+        bestTime: "April to June & September to October",
+        budget: "$1,800 - $4,500",
+        locations: "Eiffel Tower, Louvre, Montmartre, Le Marais",
         hotels: [
             {
-                name: "Ayana Resort",
-                image: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&q=80&w=800",
-                price: "$350",
+                name: "Le Bristol Paris",
+                image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800",
+                price: "$980",
                 type: "Luxury"
             },
             {
-                name: "Viceroy Bali",
-                image: "https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&q=80&w=800",
-                price: "$520",
+                name: "Shangri-La Paris",
+                image: "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&q=80&w=800",
+                price: "$1,150",
                 type: "Ultra Luxury"
             },
             {
-                name: "Ubud Hanging Gardens",
-                image: "https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?auto=format&fit=crop&q=80&w=800",
-                price: "$410",
-                type: "Eco Luxury"
+                name: "Hotel Providence",
+                image: "https://images.unsplash.com/photo-1455587734955-081b22074882?auto=format&fit=crop&q=80&w=800",
+                price: "$620",
+                type: "Boutique"
             }
         ],
         activities: [
             {
-                name: "Scuba Diving",
-                image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=800",
-                description: "Explore the vibrant marine life of the Coral Triangle."
+                name: "Seine River Cruise",
+                image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=800",
+                description: "See the city’s grand landmarks from the water at golden hour."
             },
             {
-                name: "Rice Terrace Trekking",
-                image: "img/destinations/bali-rice.jpg",
-                description: "Walk through the iconic Tegallalang terraces."
+                name: "Louvre Visit",
+                image: "https://images.unsplash.com/photo-1565099824688-e93eb20fe622?auto=format&fit=crop&q=80&w=800",
+                description: "Spend an afternoon among some of the world’s most famous masterpieces."
             },
             {
-                name: "Uluwatu Temple Visit",
-                image: "img/destinations/bali-temple.jpg",
-                description: "Witness a traditional Kecak Fire Dance at sunset."
+                name: "Montmartre Walk",
+                image: "https://images.unsplash.com/photo-1508057198894-247b23fe5ade?auto=format&fit=crop&q=80&w=800",
+                description: "Wander artistic streets, hilltop stairways, and lively cafe terraces."
             }
         ]
     },
@@ -82,39 +82,44 @@ const destinationsData = {
             }
         ]
     },
-    "Male Atoll": {
-        name: "Male Atoll",
-        country: "MALDIVES",
-        image: "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?auto=format&fit=crop&q=80&w=2000",
-        heroSubtitle: "Relax in luxurious overwater bungalows surrounded by crystal clear turquoise waters and vibrant coral reefs.",
-        description: "The Maldives is a nation of islands in the Indian Ocean cast away from the rest of the world. It is the perfect destination for honeymooners and sun-seekers alike. Each resort is its own private island, promising complete seclusion and ultimate luxury amidst the bluest waters you've ever seen.",
-        bestTime: "December to April",
-        budget: "$3,000 - $7,000",
-        locations: "Male, Maafushi, Ari Atoll",
+    "Tokyo": {
+        name: "Tokyo",
+        country: "JAPAN",
+        image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80&w=2000",
+        heroSubtitle: "Step into a city where neon skylines, historic shrines, and food culture all collide brilliantly.",
+        description: "Tokyo offers an unmatched mix of precision, energy, and discovery. One moment you are in a lantern-lit alley or temple garden, the next you are inside a dazzling district full of design, shopping, and late-night dining.",
+        bestTime: "March to May & October to November",
+        budget: "$1,700 - $4,800",
+        locations: "Shibuya, Asakusa, Shinjuku, Ginza",
         hotels: [
             {
-                name: "Soneva Fushi",
-                image: "img/destinations/maldives-villa.jpg",
-                price: "$1,200",
+                name: "Aman Tokyo",
+                image: "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&q=80&w=800",
+                price: "$1,250",
                 type: "Ultra Luxury"
             },
             {
-                name: "Anantara Dhigu",
-                image: "img/destinations/maldives-anantara.jpg",
-                price: "$850",
-                type: "Resort"
+                name: "Hoshinoya Tokyo",
+                image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=800",
+                price: "$940",
+                type: "Luxury Ryokan"
             }
         ],
         activities: [
             {
-                name: "Sunset Cruise",
-                image: "img/destinations/maldives-sunset.jpg",
-                description: "Watch dolphins leap in the golden glow of the Indian Ocean."
+                name: "Shibuya Crossing Visit",
+                image: "https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?auto=format&fit=crop&q=80&w=800",
+                description: "Experience one of the world’s most iconic urban intersections in motion."
             },
             {
-                name: "Sandbank Picnic",
-                image: "img/destinations/maldives-picnic.jpg",
-                description: "Enjoy a private lunch on a secluded patch of white sand."
+                name: "Senso-ji Temple Walk",
+                image: "https://images.unsplash.com/photo-1526481280695-3c4691f56e82?auto=format&fit=crop&q=80&w=800",
+                description: "Explore Tokyo’s historic temple quarter and its lively traditional streets."
+            },
+            {
+                name: "Tokyo Food Tour",
+                image: "https://images.unsplash.com/photo-1554797589-7241bb691973?auto=format&fit=crop&q=80&w=800",
+                description: "Taste sushi, ramen, and izakaya classics across the city’s most exciting neighborhoods."
             }
         ]
     },

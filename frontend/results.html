@@ -23,6 +23,37 @@
         }
         .result-card:hover { transform: translateY(-10px); background: rgba(15, 23, 42, 0.7); border-color: #00d2ff; }
         .highlight { box-shadow: 0 0 30px rgba(0, 210, 255, 0.3); border-color: rgba(0,210,255,0.5); background: rgba(15, 23, 42, 0.6); }
+
+        /* Attraction Card Styles */
+        .attraction-card {
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            color: #fff;
+        }
+        .attraction-card:hover { 
+            transform: translateY(-10px); 
+            background: rgba(15, 23, 42, 0.7); 
+            border-color: #00d2ff;
+            box-shadow: 0 10px 30px rgba(0, 210, 255, 0.2);
+        }
+        .attraction-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .attraction-content {
+            padding: 20px;
+            flex-grow: 1;
+        }
     </style>
 </head>
 <body class="text-white">
@@ -36,10 +67,11 @@
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="me-2 mb-1" stroke="currentColor" stroke-width="2"><path d="M12 2L2 22l10-4 10 4L12 2z"/></svg>
                 SmartTravel
             </a>
-            <div class="d-flex align-items-center profile-section ms-auto">
-                <span class="text-white me-3 d-none d-lg-block">Hello, User</span>
+            <div class="currency-toolbar ms-auto">
+                <div data-currency-mount></div>
+                <span class="text-white me-3 d-none d-lg-block" id="navUserName">Hello, User</span>
                 <div class="avatar-circle">
-                    <img src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="User" class="img-fluid rounded-circle">
+                    <img src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="User" class="img-fluid rounded-circle" id="navUserAvatar">
                 </div>
             </div>
         </div>
@@ -47,13 +79,22 @@
 
     <div class="container" style="padding-top: 130px; padding-bottom: 80px;">
         <div class="text-center mb-5">
-            <h1 class="display-4 fw-bold" id="res-title">Your Custom Itineraries</h1>
-            <p class="fs-5 text-light opacity-75" id="res-subtitle">Curated based on your specific requirements</p>
+            <h1 class="display-4 fw-bold title" id="res-title">Your Custom Itineraries</h1>
+            <p class="fs-5 text-light opacity-75 subtitle" id="res-subtitle">Curated based on your specific requirements</p>
         </div>
         
         <div class="row g-4 justify-content-center" id="results-container">
             <!-- Cards injected here via JS -->
             <div class="text-center w-100 my-5"><span class="spinner-border text-info"></span></div>
+        </div>
+
+        <!-- Attraction Fallback Section -->
+        <div id="attractions-section" class="d-none mt-5">
+            <div class="text-center mb-5">
+                <h2 class="display-5 fw-bold">Popular Attractions</h2>
+                <p class="fs-5 text-info opacity-75">Showing popular attractions for this destination</p>
+            </div>
+            <div class="row g-4 justify-content-center" id="attractions-container"></div>
         </div>
         
         <div class="text-center mt-5 pt-3">
@@ -62,71 +103,7 @@
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const dataStr = sessionStorage.getItem('tripResults');
-            if (!dataStr) {
-                window.location.href = 'plan.html';
-                return;
-            }
-            
-            const data = JSON.parse(dataStr);
-            document.getElementById('bg-img').style.backgroundImage = `url('${data.destination.image}')`;
-            document.getElementById('res-title').innerText = `${data.days} Days in ${data.destination.name}`;
-            document.getElementById('res-subtitle').innerText = `Configured for a $${data.budget} Budget`;
-            
-            const container = document.getElementById('results-container');
-            container.innerHTML = '';
-            
-            data.itineraries.forEach(itin => {
-                let actList = '';
-                itin.activities.forEach(a => {
-                    actList += `<li class="mb-2"><span class="d-inline-flex align-items-center"><svg class="me-2 text-info" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>${a.name}</span> <span class="ms-1 text-muted">($${a.price})</span></li>`;
-                });
-
-                const highlightClass = itin.recommended ? 'highlight' : '';
-                const recBadge = itin.recommended ? `<span class="badge bg-info text-dark mb-3 px-3 py-2 align-self-start fw-bold" style="border-radius:20px;">Best Match</span>` : `<div style="height:36px;" class="mb-3"></div>`;
-                
-                const card = `
-                <div class="col-lg-4 col-md-6 d-flex align-items-stretch">
-                    <div class="result-card w-100 ${highlightClass}">
-                        ${recBadge}
-                        <h3 class="text-capitalize mb-4 fw-bold text-white d-flex align-items-center">
-                            ${itin.type} Trip
-                        </h3>
-                        
-                        <div class="mb-4">
-                            <h5 class="fw-semibold text-info d-flex align-items-center"><svg class="me-2" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg> Stay</h5>
-                            <p class="mb-1 fs-6 text-light lh-sm">${itin.hotel.name}</p>
-                            <small class="text-muted">$${itin.hotel.price_per_day} / night</small>
-                        </div>
-                        
-                        <div class="mb-4 flex-grow-1">
-                            <h5 class="fw-semibold text-info d-flex align-items-center"><svg class="me-2" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Experiences</h5>
-                            <ul class="text-light ps-0 mb-0 list-unstyled" style="font-size: 0.95rem;">
-                                ${actList}
-                            </ul>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <h5 class="fw-semibold text-info d-flex align-items-center"><svg class="me-2" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Transport</h5>
-                            <p class="mb-1 fs-6 text-light lh-sm">${itin.transport.type}</p>
-                            <small class="text-muted">Est. $${itin.transport.price}</small>
-                        </div>
-                        
-                        <hr class="border-secondary mt-auto mb-4">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <span class="fs-5 fw-bold text-light">Total Est.</span>
-                            <span class="fs-2 fw-bold text-success">$${itin.totalCost}</span>
-                        </div>
-                        
-                        <button class="btn-explore w-100 justify-content-center border-0" onclick="alert('Booking API integration coming soon!')">Book Itinerary</button>
-                    </div>
-                </div>
-                `;
-                container.innerHTML += card;
-            });
-        });
-    </script>
-</body>
+    <script src="utils/currency.js"></script>
+    <script src="js/results.js"></script>
+    </body>
 </html>

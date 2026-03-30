@@ -1,9 +1,9 @@
 const destinations = [
     {
-        name: "Nusa Penida, Bali",
-        country: "INDONESIA",
-        image: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&q=80&w=2000",
-        description: "Discover the emerald of the equator, endless pristine beaches, and vibrant cultural heritage spanning thousands of islands.",
+        name: "Paris",
+        country: "FRANCE",
+        image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=2000",
+        description: "Explore timeless boulevards, iconic landmarks, and world-class art in one of Europe’s most celebrated cities.",
         rating: "4.9"
     },
     {
@@ -14,10 +14,10 @@ const destinations = [
         rating: "4.8"
     },
     {
-        name: "Male Atoll",
-        country: "MALDIVES",
-        image: "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?auto=format&fit=crop&q=80&w=2000",
-        description: "Relax in luxurious overwater bungalows surrounded by crystal clear turquoise waters and vibrant coral reefs.",
+        name: "Tokyo",
+        country: "JAPAN",
+        image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80&w=2000",
+        description: "Experience neon-lit districts, historic temples, and meticulous food culture in Japan’s dynamic capital.",
         rating: "5.0"
     },
     {
@@ -326,18 +326,36 @@ function goToSlide(index) {
  * Handle navigation to destination detail page
  */
 function navigateToDestination(name) {
-    // Save current slider state
+    handleDestinationClick(name);
+}
+
+function handleDestinationClick(destination) {
     localStorage.setItem('smartTravel_currentIndex', currentIndex.toString());
-    
-    // Map full names to simple database keys
-    const nameMap = {
-        "Nusa Penida, Bali": "Bali",
-        "Phi Phi Islands": "Phi Phi Islands",
-        "Male Atoll": "Male Atoll",
-        "Kyoto": "Kyoto"
-    };
-    const key = nameMap[name] || name;
-    window.location.href = `destination.html?place=${encodeURIComponent(key)}`;
+
+    const isLoggedIn = localStorage.getItem('user');
+    if (!isLoggedIn) {
+        showLoginPrompt();
+        return;
+    }
+
+    window.location.href = `plan.html?destination=${encodeURIComponent(destination)}`;
+}
+
+function showLoginPrompt() {
+    document.getElementById('loginModal')?.classList.remove('hidden');
+}
+
+function goToLogin() {
+    window.location.href = 'login.html';
+}
+
+function searchDestination() {
+    const value = document.getElementById('destinationSearch')?.value.trim();
+    if (!value) {
+        return;
+    }
+
+    window.location.href = `plan.html?destination=${encodeURIComponent(value)}`;
 }
 
 /**
@@ -346,7 +364,7 @@ function navigateToDestination(name) {
 function handleCardClick(index, name) {
     if (isMoving) return;
     if (index === currentIndex) {
-        navigateToDestination(name);
+        handleDestinationClick(name);
     } else {
         goToSlide(index);
     }
@@ -378,6 +396,7 @@ function checkAuthStatus() {
                 authSection.classList.add('profile-section');
                 authSection.innerHTML = `
                     <div class="d-flex align-items-center">
+                        <div data-currency-mount class="me-3"></div>
                         <span class="text-white me-3 d-none d-lg-block">Welcome, ${user.name}</span>
                         <div class="dropdown">
                             <a href="#" class="avatar-circle d-block text-decoration-none dropdown-toggle no-caret" data-bs-toggle="dropdown">
@@ -391,6 +410,8 @@ function checkAuthStatus() {
                         </div>
                     </div>
                 `;
+
+                window.SmartTravelCurrency?.initCurrencySelector();
 
                 // Add Logout Event
                 document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
