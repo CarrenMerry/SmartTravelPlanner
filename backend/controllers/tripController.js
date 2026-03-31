@@ -1,7 +1,11 @@
 const axios = require('axios');
 const Destination = require('../models/Destination');
 const Activity = require('../models/Activity');
-const { getAttractionsByPlace } = require('../services/opentrip.service');
+const {
+    getAttractionsByPlace,
+    validateDestination: validateOpenTripDestination,
+    MIN_VALID_ATTRACTIONS
+} = require('../services/opentrip.service');
 const { getCachedPexelsImage } = require('../services/pexels.service');
 const curatedDestinations = require('../data/curatedDestinations');
 
@@ -156,8 +160,155 @@ function normalizeDestinationKey(destination) {
     return String(destination || '')
         .trim()
         .toLowerCase()
+        .replace(/[^\w\s,]/g, ' ')
         .replace(/\s*,\s*/g, ' ')
         .replace(/\s+/g, ' ');
+}
+
+function titleCaseDestination(value) {
+    return String(value || '')
+        .split(/\s+/)
+        .filter(Boolean)
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+        .join(' ');
+}
+
+function levenshteinDistance(a, b) {
+    const left = String(a || '');
+    const right = String(b || '');
+
+    if (!left) return right.length;
+    if (!right) return left.length;
+
+    const matrix = Array.from({ length: left.length + 1 }, (_, row) => (
+        Array.from({ length: right.length + 1 }, (_, col) => (
+            row === 0 ? col : (col === 0 ? row : 0)
+        ))
+    ));
+
+    for (let row = 1; row <= left.length; row += 1) {
+        for (let col = 1; col <= right.length; col += 1) {
+            const cost = left[row - 1] === right[col - 1] ? 0 : 1;
+            matrix[row][col] = Math.min(
+                matrix[row - 1][col] + 1,
+                matrix[row][col - 1] + 1,
+                matrix[row - 1][col - 1] + cost
+            );
+        }
+    }
+
+    return matrix[left.length][right.length];
+}
+
+function similarityScore(a, b) {
+    const left = normalizeDestinationKey(a);
+    const right = normalizeDestinationKey(b);
+
+    if (!left || !right) {
+        return 0;
+    }
+
+    if (left === right) {
+        return 1;
+    }
+
+    if (left.includes(right) || right.includes(left)) {
+        return Math.min(left.length, right.length) / Math.max(left.length, right.length);
+    }
+
+    const distance = levenshteinDistance(left, right);
+    return 1 - (distance / Math.max(left.length, right.length));
+}
+
+async function getDestinationCandidates() {
+    const dbDestinations = await Destination.find({}, { name: 1, country: 1, image: 1 }).lean();
+    const curatedCandidates = Object.keys(curatedDestinations).map(key => ({
+        name: titleCaseDestination(key),
+        country: null,
+        image: null
+    }));
+
+    const seen = new Set();
+
+    return [...dbDestinations, ...curatedCandidates].filter(destination => {
+        const normalized = normalizeDestinationKey(destination.name);
+        if (!normalized || seen.has(normalized)) {
+            return false;
+        }
+
+        seen.add(normalized);
+        return true;
+    });
+}
+
+async function findBestDestinationCandidate(query) {
+    const normalizedQuery = normalizeDestinationKey(query);
+
+    if (!normalizedQuery) {
+        return null;
+    }
+
+    const candidates = await getDestinationCandidates();
+    const ranked = candidates
+        .map(candidate => ({
+            ...candidate,
+            score: similarityScore(normalizedQuery, candidate.name)
+        }))
+        .filter(candidate => candidate.score >= 0.55)
+        .sort((left, right) => right.score - left.score);
+
+    return ranked[0] || null;
+}
+
+async function resolveDestination(query) {
+    const normalizedQuery = normalizeDestinationKey(query);
+
+    if (!normalizedQuery) {
+        return null;
+    }
+
+    const directMatch = await validateOpenTripDestination(query);
+    if (directMatch) {
+        return {
+            ...directMatch,
+            query: normalizedQuery,
+            displayName: [directMatch.name, directMatch.country].filter(Boolean).join(', '),
+            corrected: normalizeDestinationKey(directMatch.name) !== normalizedQuery
+        };
+    }
+
+    const bestCandidate = await findBestDestinationCandidate(query);
+    if (!bestCandidate) {
+        return null;
+    }
+
+    const validatedCandidate = await validateOpenTripDestination(bestCandidate.name);
+    if (validatedCandidate) {
+        return {
+            ...validatedCandidate,
+            country: validatedCandidate.country || bestCandidate.country || null,
+            image: bestCandidate.image || null,
+            query: normalizedQuery,
+            displayName: [validatedCandidate.name, validatedCandidate.country || bestCandidate.country].filter(Boolean).join(', '),
+            corrected: normalizeDestinationKey(validatedCandidate.name) !== normalizedQuery
+        };
+    }
+
+    const curatedPlaces = getCuratedPlacesForDestination(bestCandidate.name);
+    if (!curatedPlaces?.length) {
+        return null;
+    }
+
+    return {
+        name: bestCandidate.name,
+        lat: null,
+        lon: null,
+        country: bestCandidate.country || null,
+        image: bestCandidate.image || curatedPlaces[0]?.image || null,
+        query: normalizedQuery,
+        displayName: [bestCandidate.name, bestCandidate.country].filter(Boolean).join(', '),
+        corrected: normalizeDestinationKey(bestCandidate.name) !== normalizedQuery
+    };
 }
 
 function getCuratedPlacesForDestination(destination) {
@@ -608,6 +759,43 @@ exports.getDestinations = async (req, res) => {
 
 exports.generateFallbackItinerary = generateFallbackItinerary;
 
+exports.validateDestination = async (req, res) => {
+    try {
+        const query = String(req.query.query || '').trim();
+
+        if (!query) {
+            return res.status(400).json({
+                error: 'INVALID_DESTINATION',
+                message: 'Destination query is required.'
+            });
+        }
+
+        const location = await resolveDestination(query);
+
+        if (!location) {
+            return res.status(404).json({
+                error: 'INVALID_DESTINATION',
+                message: 'We couldn\'t find this location. Try a different or more specific place.'
+            });
+        }
+
+        return res.json({
+            valid: true,
+            corrected: location.corrected,
+            name: location.name,
+            country: location.country,
+            lat: location.lat,
+            lon: location.lon,
+            displayName: location.displayName
+        });
+    } catch (error) {
+        return res.status(500).json({
+            error: 'VALIDATION_FAILED',
+            message: 'Destination validation is temporarily unavailable.'
+        });
+    }
+};
+
 exports.generateTrip = async (req, res) => {
     try {
         const destinationInput = (req.body.destination || '').trim();
@@ -619,18 +807,40 @@ exports.generateTrip = async (req, res) => {
             return res.status(400).json({ error: 'Destination is required' });
         }
 
-        const { destDoc, dbAttractions } = await getDatabaseAttractions(destinationInput);
-        const curatedPlaces = getCuratedPlacesForDestination(destinationInput);
+        const validatedLocation = await resolveDestination(destinationInput);
+
+        if (!validatedLocation) {
+            return res.status(400).json({
+                error: 'INVALID_DESTINATION',
+                message: 'We couldn\'t find this location. Try a different or more specific place.'
+            });
+        }
+
+        const resolvedDestinationName = validatedLocation.name;
+        const resolvedDestinationLabel = validatedLocation.displayName || resolvedDestinationName;
+
+        const { destDoc, dbAttractions } = await getDatabaseAttractions(resolvedDestinationName);
+        const curatedPlaces = getCuratedPlacesForDestination(resolvedDestinationName) || getCuratedPlacesForDestination(destinationInput);
         let openTripResult = null;
 
         if (curatedPlaces && curatedPlaces.length) {
-            console.log('Using curated data for:', destinationInput);
+            console.log('Using curated data for:', resolvedDestinationName);
+
+            if (curatedPlaces.length < MIN_VALID_ATTRACTIONS) {
+                return res.status(400).json({
+                    error: 'NO_ITINERARY',
+                    message: 'Not enough attractions found for this destination. Try reducing days or choosing another place.'
+                });
+            }
 
             const destinationMeta = {
-                name: destDoc?.name || destinationInput,
-                country: destDoc?.country || 'Global',
-                image: destDoc?.image || curatedPlaces[0].image,
-                coordinates: null
+                name: destDoc?.name || resolvedDestinationName,
+                country: destDoc?.country || validatedLocation.country || 'Global',
+                image: destDoc?.image || validatedLocation.image || curatedPlaces[0].image,
+                coordinates: validatedLocation.lat != null && validatedLocation.lon != null
+                    ? { lat: validatedLocation.lat, lon: validatedLocation.lon }
+                    : null,
+                formattedName: resolvedDestinationLabel
             };
 
             const itineraries = await hydrateItineraryImages(
@@ -650,13 +860,17 @@ exports.generateTrip = async (req, res) => {
         }
 
         try {
-            openTripResult = await getAttractionsByPlace(destinationInput);
-            console.log('[trip] coords:', openTripResult.coords);
-            console.log('Raw attractions:', openTripResult.rawAttractions.length);
-            console.log('[trip] attractions:', openTripResult.rawAttractions.length);
-            console.log('[trip] cleaned data:', openTripResult.cleanedAttractions.length);
-            console.log('Using API data:', openTripResult.cleanedAttractions.length);
-            console.log('Images fetched:', openTripResult.imagesCount || 0);
+            openTripResult = validatedLocation.lat != null && validatedLocation.lon != null
+                ? await getAttractionsByPlace(resolvedDestinationName)
+                : null;
+            if (openTripResult) {
+                console.log('[trip] coords:', openTripResult.coords);
+                console.log('Raw attractions:', openTripResult.rawAttractions.length);
+                console.log('[trip] attractions:', openTripResult.rawAttractions.length);
+                console.log('[trip] cleaned data:', openTripResult.cleanedAttractions.length);
+                console.log('Using API data:', openTripResult.cleanedAttractions.length);
+                console.log('Images fetched:', openTripResult.imagesCount || 0);
+            }
         } catch (error) {
             console.error('[trip] OpenTripMap failed:', error.message);
         }
@@ -673,10 +887,10 @@ exports.generateTrip = async (req, res) => {
 
         const sourcePlaces = cleaned.length > 0 ? cleaned : validDbPlaces;
 
-        if (sourcePlaces.length === 0) {
+        if (!sourcePlaces.length || sourcePlaces.length < MIN_VALID_ATTRACTIONS) {
             return res.status(400).json({
-                success: false,
-                message: 'No itinerary available for this destination. Try a different location.'
+                error: 'NO_ITINERARY',
+                message: 'Not enough attractions found for this destination. Try reducing days or choosing another place.'
             });
         }
 
@@ -695,12 +909,16 @@ exports.generateTrip = async (req, res) => {
         console.log('Cultural:', culturalPlaces.length);
 
         const destinationMeta = {
-            name: destDoc?.name || destinationInput,
-            country: destDoc?.country || openTripResult?.coords?.country || 'Global',
-            image: destDoc?.image || 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=1000',
-            coordinates: openTripResult?.coords
-                ? { lat: openTripResult.coords.lat, lon: openTripResult.coords.lon }
-                : null
+            name: destDoc?.name || resolvedDestinationName,
+            country: destDoc?.country || validatedLocation.country || openTripResult?.coords?.country || 'Global',
+            image: destDoc?.image || validatedLocation.image || 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=1000',
+            coordinates: validatedLocation.lat != null && validatedLocation.lon != null
+                ? { lat: validatedLocation.lat, lon: validatedLocation.lon }
+                : (openTripResult?.coords
+                    ? { lat: openTripResult.coords.lat, lon: openTripResult.coords.lon }
+                    : null),
+            formattedName: resolvedDestinationLabel
+                
         };
 
         const pools = {

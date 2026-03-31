@@ -43,6 +43,31 @@ async function getCoordinates(place) {
     };
 }
 
+async function validateDestination(query) {
+    const trimmedQuery = String(query || '').trim();
+
+    if (!trimmedQuery) {
+        return null;
+    }
+
+    try {
+        const location = await getCoordinates(trimmedQuery);
+
+        if (typeof location.lat !== 'number' || typeof location.lon !== 'number') {
+            return null;
+        }
+
+        return {
+            name: location.city || trimmedQuery,
+            lat: location.lat,
+            lon: location.lon,
+            country: location.country || null
+        };
+    } catch (error) {
+        return null;
+    }
+}
+
 async function getAttractions(lat, lon) {
     const apiKey = getApiKey();
 
@@ -366,6 +391,7 @@ module.exports = {
     DEFAULT_LIMIT,
     MIN_VALID_ATTRACTIONS,
     TOP_DETAIL_COUNT,
+    validateDestination,
     getCoordinates,
     getAttractions,
     getPlaceDetails,
