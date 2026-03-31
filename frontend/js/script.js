@@ -95,54 +95,20 @@ function initApp() {
         });
     });
 
-    // 🎬 Cinematic Smooth Scroll (requestAnimationFrame + easing)
-    console.log("SmartTravel: Cinematic scroll active");
 
-    /**
-     * Easing function: easeInOutQuad
-     * t: current time, b: beginning value, c: change in value, d: duration
-     */
-    function easeInOutQuad(t, b, c, d) {
-        t /= d / 2;
-        if (t < 1) return (c / 2) * t * t + b;
-        t--;
-        return (-c / 2) * (t * (t - 2) - 1) + b;
-    }
-
-    /**
-     * Custom Smooth Scroll using requestAnimationFrame
-     */
-    function smoothScrollTo(targetY, duration = 800) {
-        const startY = window.pageYOffset;
-        const distance = targetY - startY;
-        let startTime = null;
-
-        function animation(currentTime) {
-            if (startTime === null) startTime = currentTime;
-            const timeElapsed = currentTime - startTime;
-            const run = easeInOutQuad(timeElapsed, startY, distance, duration);
-            window.scrollTo(0, run);
-            if (timeElapsed < duration) requestAnimationFrame(animation);
-        }
-
-        requestAnimationFrame(animation);
-    }
-
-    // Intercept all anchor clicks
+    // Native smooth scroll — GPU-accelerated, handled by the browser compositor
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function(e) {
             const targetId = this.getAttribute('href');
             e.preventDefault();
 
-            let targetY = 0;
-            if (targetId !== '#') {
-                const targetElement = document.querySelector(targetId);
-                if (!targetElement) return;
-                const navHeight = document.querySelector('.navbar').offsetHeight;
-                targetY = targetElement.getBoundingClientRect().top + window.pageYOffset - navHeight;
+            if (targetId === '#') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
             }
 
-            smoothScrollTo(targetY, 800);
+            const target = document.querySelector(targetId);
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     });
 
@@ -323,35 +289,48 @@ function goToSlide(index) {
 }
 
 /**
- * Handle navigation to destination detail page
+ * Handle navigation to destination detail page (hero slider button)
  */
 function navigateToDestination(name) {
-    handleDestinationClick(name);
+    const isLoggedIn = localStorage.getItem('user');
+    if (!isLoggedIn) {
+        sessionStorage.setItem('pendingDestination', name);
+        window.location.href = 'login.html';
+        return;
+    }
+    window.location.href = `plan.html?destination=${encodeURIComponent(name)}`;
 }
 
+/**
+ * Handle grid/card click — goes to destination detail page
+ */
 function handleDestinationClick(destination) {
     localStorage.setItem('smartTravel_currentIndex', currentIndex.toString());
 
     const isLoggedIn = localStorage.getItem('user');
     if (!isLoggedIn) {
-        showLoginPrompt();
+        sessionStorage.setItem('pendingDestination', destination);
+        window.location.href = 'login.html';
         return;
     }
 
-    window.location.href = `plan.html?destination=${encodeURIComponent(destination)}`;
-}
-
-function showLoginPrompt() {
-    document.getElementById('loginModal')?.classList.remove('hidden');
-}
-
-function goToLogin() {
-    window.location.href = 'login.html';
+    window.location.href = `destination.html?place=${encodeURIComponent(destination)}`;
 }
 
 function searchDestination() {
     const value = document.getElementById('destinationSearch')?.value.trim();
     if (!value) {
+        // Shake the input to hint that it's required
+        const input = document.getElementById('destinationSearch');
+        input.classList.add('input-shake');
+        setTimeout(() => input.classList.remove('input-shake'), 600);
+        return;
+    }
+
+    const isLoggedIn = localStorage.getItem('user');
+    if (!isLoggedIn) {
+        sessionStorage.setItem('pendingDestination', value);
+        window.location.href = 'login.html';
         return;
     }
 

@@ -32,37 +32,23 @@
             color: rgba(255, 255, 255, 0.7);
         }
 
-        .login-modal.hidden {
-            display: none;
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%       { transform: translateX(-8px); }
+            40%       { transform: translateX(8px); }
+            60%       { transform: translateX(-6px); }
+            80%       { transform: translateX(6px); }
         }
 
-        .login-modal {
-            position: fixed;
-            inset: 0;
-            z-index: 1200;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(2, 6, 23, 0.72);
-            padding: 24px;
+        .input-shake {
+            animation: shake 0.5s ease;
+            border: 1px solid rgba(0, 200, 255, 0.8) !important;
         }
 
-        .login-box {
-            width: min(420px, 100%);
-            background: rgba(15, 23, 42, 0.88);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 32px;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
-            color: white;
-            text-align: center;
-        }
-
-        .login-box button {
-            width: 100%;
-            border: none;
-            margin-top: 12px;
+        /* Close modal when clicking backdrop */
+        .login-modal:not(.hidden) {
+            cursor: default;
         }
     </style>
 </head>
@@ -177,7 +163,7 @@
             <div class="row g-4">
                 <!-- Static example preview grid matching premium aesthetic -->
                 <div class="col-sm-6 col-lg-3">
-                    <a href="plan.html?destination=Paris" class="grid-card text-decoration-none text-white d-block" aria-label="Plan a Paris trip" onclick="handleDestinationClick('Paris'); return false;">
+                    <a href="destination.html?place=Paris" class="grid-card text-decoration-none text-white d-block" aria-label="Plan a Paris trip" onclick="handleDestinationClick('Paris'); return false;">
                         <img src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=800"
                             alt="Paris">
                         <div class="grid-card-overlay">
@@ -187,7 +173,7 @@
                     </a>
                 </div>
                 <div class="col-sm-6 col-lg-3">
-                    <a href="plan.html?destination=Kyoto" class="grid-card text-decoration-none text-white d-block" aria-label="Plan a Kyoto trip" onclick="handleDestinationClick('Kyoto'); return false;">
+                    <a href="destination.html?place=Kyoto" class="grid-card text-decoration-none text-white d-block" aria-label="Plan a Kyoto trip" onclick="handleDestinationClick('Kyoto'); return false;">
                         <img src="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&q=80&w=800"
                             alt="Kyoto">
                         <div class="grid-card-overlay">
@@ -197,7 +183,7 @@
                     </a>
                 </div>
                 <div class="col-sm-6 col-lg-3">
-                    <a href="plan.html?destination=Tokyo" class="grid-card text-decoration-none text-white d-block" aria-label="Plan a Tokyo trip" onclick="handleDestinationClick('Tokyo'); return false;">
+                    <a href="destination.html?place=Tokyo" class="grid-card text-decoration-none text-white d-block" aria-label="Plan a Tokyo trip" onclick="handleDestinationClick('Tokyo'); return false;">
                         <img src="https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80&w=800"
                             alt="Tokyo">
                         <div class="grid-card-overlay">
@@ -207,7 +193,7 @@
                     </a>
                 </div>
                 <div class="col-sm-6 col-lg-3">
-                    <a href="plan.html?destination=Phi%20Phi%20Islands" class="grid-card text-decoration-none text-white d-block" aria-label="Plan a Phi Phi Islands trip" onclick="handleDestinationClick('Phi Phi Islands'); return false;">
+                    <a href="destination.html?place=Phi%20Phi%20Islands" class="grid-card text-decoration-none text-white d-block" aria-label="Plan a Phi Phi Islands trip" onclick="handleDestinationClick('Phi Phi Islands'); return false;">
                         <img src="https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&q=80&w=800"
                             alt="Thailand">
                         <div class="grid-card-overlay">
@@ -334,14 +320,6 @@
             luxury perks.</p>
         <a href="login.html" class="btn-explore w-100 justify-content-center text-decoration-none"
             style="padding: 10px; font-size: 0.9rem;">Login Now</a>
-    </div>
-
-    <div id="loginModal" class="login-modal hidden">
-        <div class="login-box">
-            <h3>Login Required</h3>
-            <p>Please login to view detailed itineraries.</p>
-            <button class="btn-explore" type="button" onclick="goToLogin()">Login</button>
-        </div>
     </div>
 
     <!-- Bootstrap Bundle JS -->

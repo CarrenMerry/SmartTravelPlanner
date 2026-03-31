@@ -368,6 +368,32 @@
             to   { opacity: 1; transform: translateY(0); }
         }
 
+        .error-toast {
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            max-width: min(420px, calc(100vw - 32px));
+            padding: 14px 18px;
+            border-radius: 16px;
+            background: rgba(127, 29, 29, 0.96);
+            border: 1px solid rgba(252, 165, 165, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+            color: #fee2e2;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(18px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+        }
+
+        .error-toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
         /* ============================================
            SUBMIT BUTTON
         ============================================ */

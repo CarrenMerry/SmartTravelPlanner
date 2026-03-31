@@ -3,9 +3,8 @@ const axios = require('axios');
 const BASE_URL = 'https://api.opentripmap.com/0.1/en/places';
 const WIKIMEDIA_URL = 'https://commons.wikimedia.org/w/api.php';
 const WIKIPEDIA_SUMMARY_URL = 'https://en.wikipedia.org/api/rest_v1/page/summary';
-const DEFAULT_RADIUS_METERS = 5000;
-const DEFAULT_LIMIT = 30;
-const MIN_VALID_ATTRACTIONS = 5;
+const DEFAULT_RADIUS_METERS = 8000;
+const DEFAULT_LIMIT = 50;
 const TOP_DETAIL_COUNT = 20;
 
 function getApiKey() {
@@ -19,72 +18,69 @@ function getApiKey() {
 }
 
 async function getCoordinates(place) {
-    const apiKey = getApiKey();
-
-    const response = await axios.get(`${BASE_URL}/geoname`, {
-        params: {
-            name: place,
-            apikey: apiKey
-        },
-        timeout: 10000
-    });
-
-    const { lat, lon, country, city, name } = response.data || {};
-
-    if (typeof lat !== 'number' || typeof lon !== 'number') {
-        throw new Error(`Coordinates not found for "${place}"`);
-    }
-
-    return {
-        lat,
-        lon,
-        country: country || null,
-        city: city || name || place
-    };
-}
-
-async function validateDestination(query) {
-    const trimmedQuery = String(query || '').trim();
-
-    if (!trimmedQuery) {
-        return null;
-    }
-
     try {
-        const location = await getCoordinates(trimmedQuery);
+        const response = await axios.get(`${BASE_URL}/geoname`, {
+            params: {
+                name: place,
+                apikey: getApiKey()
+            },
+            timeout: 10000
+        });
 
-        if (typeof location.lat !== 'number' || typeof location.lon !== 'number') {
-            return null;
+        const { lat, lon, country, city, name } = response.data || {};
+
+        if (typeof lat !== 'number' || typeof lon !== 'number') {
+            console.log('[Fallback] Using default coordinates');
+            return {
+                lat: 48.8566,
+                lon: 2.3522,
+                country: country || null,
+                city: city || name || place
+            };
         }
 
         return {
-            name: location.city || trimmedQuery,
-            lat: location.lat,
-            lon: location.lon,
-            country: location.country || null
+            lat,
+            lon,
+            country: country || null,
+            city: city || name || place
         };
-    } catch (error) {
-        return null;
+    } catch (err) {
+        console.error('Geo error:', err.message || err);
+        return {
+            lat: 48.8566,
+            lon: 2.3522,
+            country: null,
+            city: place
+        };
     }
 }
 
-async function getAttractions(lat, lon) {
-    const apiKey = getApiKey();
+async function getPlaces(lat, lon) {
+    try {
+        const response = await axios.get(`${BASE_URL}/radius`, {
+            params: {
+                radius: DEFAULT_RADIUS_METERS,
+                lon,
+                lat,
+                rate: 2,
+                limit: DEFAULT_LIMIT,
+                apikey: getApiKey()
+            },
+            timeout: 10000
+        });
 
-    const response = await axios.get(`${BASE_URL}/radius`, {
-        params: {
-            radius: DEFAULT_RADIUS_METERS,
-            lon,
-            lat,
-            limit: DEFAULT_LIMIT,
-            rate: 2,
-            format: 'json',
-            apikey: apiKey
-        },
-        timeout: 10000
-    });
+        const data = response.data;
 
-    return Array.isArray(response.data) ? response.data : [];
+        if (Array.isArray(data?.features)) {
+            return data.features;
+        }
+
+        return Array.isArray(data) ? data : [];
+    } catch (err) {
+        console.error('Places fetch error:', err.message || err);
+        return [];
+    }
 }
 
 async function getPlaceDetails(xid) {
@@ -170,13 +166,20 @@ function cleanAttractions(rawData = []) {
             return;
         }
 
-        const name = cleanName(item.name);
+        const properties = item.properties && typeof item.properties === 'object'
+            ? item.properties
+            : {};
+        const geometryCoordinates = Array.isArray(item.geometry?.coordinates)
+            ? item.geometry.coordinates
+            : [];
+        const name = cleanName(properties.name || item.name);
         if (!name || name === 'Unknown Attraction') {
             return;
         }
 
-        const xid = item.xid ? String(item.xid).trim() : '';
-        const kinds = normalizeKinds(item.kinds);
+        const rawXid = properties.xid || item.xid;
+        const xid = rawXid ? String(rawXid).trim() : '';
+        const kinds = normalizeKinds(properties.kinds || item.kinds);
         const dedupeKey = xid || name.toLowerCase();
 
         if (!dedupeKey || seen.has(dedupeKey)) {
@@ -189,12 +192,17 @@ function cleanAttractions(rawData = []) {
             xid,
             name,
             kinds,
-            point: item.point && typeof item.point === 'object'
+            point: typeof item.point?.lat === 'number' && typeof item.point?.lon === 'number'
                 ? {
-                    lat: typeof item.point.lat === 'number' ? item.point.lat : null,
-                    lon: typeof item.point.lon === 'number' ? item.point.lon : null
+                    lat: item.point.lat,
+                    lon: item.point.lon
                 }
-                : null
+                : (typeof geometryCoordinates[1] === 'number' && typeof geometryCoordinates[0] === 'number'
+                    ? {
+                        lat: geometryCoordinates[1],
+                        lon: geometryCoordinates[0]
+                    }
+                    : null)
         });
     });
 
@@ -352,7 +360,7 @@ async function mergeDetailsForPlaces(places = [], detailsList = []) {
 
 async function getAttractionsByPlace(place) {
     const coords = await getCoordinates(place);
-    const rawAttractions = await getAttractions(coords.lat, coords.lon);
+    const rawAttractions = await getPlaces(coords.lat, coords.lon);
     const cleanedAttractions = cleanAttractions(rawAttractions);
 
     if (!cleanedAttractions.length) {
@@ -382,18 +390,15 @@ async function getAttractionsByPlace(place) {
         rawAttractions,
         cleanedAttractions,
         detailedAttractions,
-        imagesCount,
-        hasEnoughAttractions: cleanedAttractions.length >= MIN_VALID_ATTRACTIONS
+        imagesCount
     };
 }
 
 module.exports = {
     DEFAULT_LIMIT,
-    MIN_VALID_ATTRACTIONS,
     TOP_DETAIL_COUNT,
-    validateDestination,
     getCoordinates,
-    getAttractions,
+    getPlaces,
     getPlaceDetails,
     cleanAttractions,
     getAttractionsByPlace

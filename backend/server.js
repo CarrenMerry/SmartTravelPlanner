@@ -29,7 +29,11 @@ const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
     try {
-        await connectDB();
+        const dbConnected = await connectDB();
+        if (!dbConnected) {
+            console.warn('Starting API without MongoDB. Database-backed features will be limited.');
+        }
+
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
         });

@@ -1,0 +1,7 @@
+.git
+*.log
+README.md
+repair.py
+absolute_final_check.html
+final_test.html
+test_images.html

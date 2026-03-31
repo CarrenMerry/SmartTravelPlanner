@@ -19,6 +19,22 @@ body {
     overflow-x: hidden;
 }
 
+.error-box {
+    position: fixed;
+    top: 96px;
+    right: 24px;
+    max-width: 360px;
+    padding: 14px 16px;
+    border: 1px solid rgba(255, 107, 107, 0.35);
+    border-radius: 14px;
+    background: rgba(127, 29, 29, 0.92);
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+    color: #fff5f5;
+    font-size: 0.95rem;
+    line-height: 1.45;
+    z-index: 2200;
+}
+
 /* =========================================
    DYNAMIC BACKGROUND & OVERLAY
 ========================================= */

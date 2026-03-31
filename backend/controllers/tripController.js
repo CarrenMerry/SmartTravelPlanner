@@ -3,14 +3,14 @@ const Destination = require('../models/Destination');
 const Activity = require('../models/Activity');
 const {
     getAttractionsByPlace,
-    validateDestination: validateOpenTripDestination,
-    MIN_VALID_ATTRACTIONS
+    getPlaceDetails
 } = require('../services/opentrip.service');
 const { getCachedPexelsImage } = require('../services/pexels.service');
 const curatedDestinations = require('../data/curatedDestinations');
 
 const ITINERARY_TYPES = ['Adventure', 'Relaxation', 'Cultural'];
 const WIKIPEDIA_SUMMARY_URL = 'https://en.wikipedia.org/api/rest_v1/page/summary';
+const DEFAULT_PLACE_IMAGE = 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=1000';
 
 const CATEGORY_RULES = {
     adventure: ['hiking', 'beach', 'mountain', 'sport', 'natural'],
@@ -221,7 +221,9 @@ function similarityScore(a, b) {
 }
 
 async function getDestinationCandidates() {
-    const dbDestinations = await Destination.find({}, { name: 1, country: 1, image: 1 }).lean();
+    const dbDestinations = Destination.db?.readyState === 1
+        ? await Destination.find({}, { name: 1, country: 1, image: 1 }).lean()
+        : [];
     const curatedCandidates = Object.keys(curatedDestinations).map(key => ({
         name: titleCaseDestination(key),
         country: null,
@@ -239,76 +241,6 @@ async function getDestinationCandidates() {
         seen.add(normalized);
         return true;
     });
-}
-
-async function findBestDestinationCandidate(query) {
-    const normalizedQuery = normalizeDestinationKey(query);
-
-    if (!normalizedQuery) {
-        return null;
-    }
-
-    const candidates = await getDestinationCandidates();
-    const ranked = candidates
-        .map(candidate => ({
-            ...candidate,
-            score: similarityScore(normalizedQuery, candidate.name)
-        }))
-        .filter(candidate => candidate.score >= 0.55)
-        .sort((left, right) => right.score - left.score);
-
-    return ranked[0] || null;
-}
-
-async function resolveDestination(query) {
-    const normalizedQuery = normalizeDestinationKey(query);
-
-    if (!normalizedQuery) {
-        return null;
-    }
-
-    const directMatch = await validateOpenTripDestination(query);
-    if (directMatch) {
-        return {
-            ...directMatch,
-            query: normalizedQuery,
-            displayName: [directMatch.name, directMatch.country].filter(Boolean).join(', '),
-            corrected: normalizeDestinationKey(directMatch.name) !== normalizedQuery
-        };
-    }
-
-    const bestCandidate = await findBestDestinationCandidate(query);
-    if (!bestCandidate) {
-        return null;
-    }
-
-    const validatedCandidate = await validateOpenTripDestination(bestCandidate.name);
-    if (validatedCandidate) {
-        return {
-            ...validatedCandidate,
-            country: validatedCandidate.country || bestCandidate.country || null,
-            image: bestCandidate.image || null,
-            query: normalizedQuery,
-            displayName: [validatedCandidate.name, validatedCandidate.country || bestCandidate.country].filter(Boolean).join(', '),
-            corrected: normalizeDestinationKey(validatedCandidate.name) !== normalizedQuery
-        };
-    }
-
-    const curatedPlaces = getCuratedPlacesForDestination(bestCandidate.name);
-    if (!curatedPlaces?.length) {
-        return null;
-    }
-
-    return {
-        name: bestCandidate.name,
-        lat: null,
-        lon: null,
-        country: bestCandidate.country || null,
-        image: bestCandidate.image || curatedPlaces[0]?.image || null,
-        query: normalizedQuery,
-        displayName: [bestCandidate.name, bestCandidate.country].filter(Boolean).join(', '),
-        corrected: normalizeDestinationKey(bestCandidate.name) !== normalizedQuery
-    };
 }
 
 function getCuratedPlacesForDestination(destination) {
@@ -340,6 +272,34 @@ function formatSlot(place) {
 
 function formatPlace(place) {
     return formatSlot(place);
+}
+
+function buildGenericFallbackPlaces(destination, days) {
+    const baseName = String(destination || 'Your destination').trim() || 'Your destination';
+    const placeCount = Math.max(6, Number(days || 0) * 3);
+    const templates = [
+        { suffix: 'Old Town Walk', kinds: 'historic, cultural', description: 'A relaxed introduction to the local history, architecture, and street life.' },
+        { suffix: 'Central Market', kinds: 'market, cultural', description: 'A lively local market area to explore regional food, crafts, and everyday culture.' },
+        { suffix: 'Scenic Viewpoint', kinds: 'viewpoint, scenic, relaxation', description: 'A photogenic stop with broad views and a slower sightseeing pace.' },
+        { suffix: 'Signature Museum', kinds: 'museum, cultural', description: 'A culture-focused stop that adds context and depth to the destination.' },
+        { suffix: 'Riverside Promenade', kinds: 'park, scenic, relaxation', description: 'An easygoing waterfront or green-space visit for a calmer afternoon.' },
+        { suffix: 'Local Food District', kinds: 'food, cultural', description: 'A flexible evening area for tasting local specialties and soaking up the atmosphere.' },
+        { suffix: 'Nature Escape', kinds: 'nature, adventure', description: 'An outdoor stop that balances the trip with fresh air and scenic surroundings.' },
+        { suffix: 'Landmark Square', kinds: 'architecture, historic, cultural', description: 'A central landmark area that works well as a classic sightseeing anchor.' },
+        { suffix: 'Art Quarter', kinds: 'art, cultural', description: 'A creative neighborhood or gallery zone for a lighter cultural stop.' }
+    ];
+
+    return Array.from({ length: placeCount }, (_, index) => {
+        const template = templates[index % templates.length];
+
+        return {
+            xid: `fallback-${normalizeDestinationKey(baseName).replace(/\s+/g, '-')}-${index + 1}`,
+            name: `${baseName} ${template.suffix}`,
+            kinds: template.kinds,
+            description: template.description,
+            image: null
+        };
+    });
 }
 
 function generateDays(pool, days) {
@@ -586,21 +546,71 @@ async function getWikimediaImage(title) {
     }
 }
 
+function canResolveOpenTripImage(place) {
+    const xid = String(place?.xid || '').trim();
+
+    if (!xid) {
+        return false;
+    }
+
+    return !xid.startsWith('fallback-') && !xid.startsWith('db-') && !xid.startsWith('curated-');
+}
+
+async function getPlaceImage(place) {
+    if (!place || typeof place !== 'object') {
+        return DEFAULT_PLACE_IMAGE;
+    }
+
+    if (place.image) {
+        return place.image;
+    }
+
+    if (canResolveOpenTripImage(place)) {
+        try {
+            const details = await getPlaceDetails(place.xid);
+
+            if (details?.preview?.source) {
+                return details.preview.source;
+            }
+
+            if (details?.image) {
+                return details.image;
+            }
+        } catch (error) {
+            // Non-blocking fallback chain by design.
+        }
+    }
+
+    try {
+        const wikimediaImage = await getWikimediaImage(place.name);
+        if (wikimediaImage) {
+            return wikimediaImage;
+        }
+    } catch (error) {
+        // Non-blocking fallback chain by design.
+    }
+
+    try {
+        const pexelsImage = await getCachedPexelsImage(place.name);
+        if (pexelsImage) {
+            return pexelsImage;
+        }
+    } catch (error) {
+        // Non-blocking fallback chain by design.
+    }
+
+    return DEFAULT_PLACE_IMAGE;
+}
+
 async function enrichImages(places = []) {
     return Promise.all(places.map(async place => {
-        if (!place || place.image || !place.name) {
+        if (!place) {
             return place;
-        }
-
-        let image = await getWikimediaImage(place.name);
-
-        if (!image) {
-            image = await getCachedPexelsImage(place.name);
         }
 
         return {
             ...place,
-            image: image || null
+            image: await getPlaceImage(place)
         };
     }));
 }
@@ -692,6 +702,10 @@ function generateFallbackItinerary(destination, days, budget, preference = 'cult
 }
 
 async function getDatabaseAttractions(destination) {
+    if (Destination.db?.readyState !== 1 || Activity.db?.readyState !== 1) {
+        return { destDoc: null, dbAttractions: [] };
+    }
+
     const destDoc = await Destination.findOne({ name: { $regex: new RegExp(destination, 'i') } });
 
     if (!destDoc) {
@@ -713,6 +727,16 @@ async function getDatabaseAttractions(destination) {
 
 exports.getDestinations = async (req, res) => {
     try {
+        if (Destination.db?.readyState !== 1) {
+            const curatedList = Object.keys(curatedDestinations).map(key => ({
+                name: titleCaseDestination(key),
+                country: '',
+                image: curatedDestinations[key]?.[0]?.image || null
+            }));
+
+            return res.json(curatedList);
+        }
+
         let destinations = await Destination.find();
 
         if (destinations.length === 0) {
@@ -770,23 +794,15 @@ exports.validateDestination = async (req, res) => {
             });
         }
 
-        const location = await resolveDestination(query);
-
-        if (!location) {
-            return res.status(404).json({
-                error: 'INVALID_DESTINATION',
-                message: 'We couldn\'t find this location. Try a different or more specific place.'
-            });
-        }
-
         return res.json({
             valid: true,
-            corrected: location.corrected,
-            name: location.name,
-            country: location.country,
-            lat: location.lat,
-            lon: location.lon,
-            displayName: location.displayName
+            allowAttempt: true,
+            corrected: false,
+            name: query,
+            country: null,
+            lat: null,
+            lon: null,
+            displayName: query
         });
     } catch (error) {
         return res.status(500).json({
@@ -807,68 +823,18 @@ exports.generateTrip = async (req, res) => {
             return res.status(400).json({ error: 'Destination is required' });
         }
 
-        const validatedLocation = await resolveDestination(destinationInput);
-
-        if (!validatedLocation) {
-            return res.status(400).json({
-                error: 'INVALID_DESTINATION',
-                message: 'We couldn\'t find this location. Try a different or more specific place.'
-            });
-        }
-
-        const resolvedDestinationName = validatedLocation.name;
-        const resolvedDestinationLabel = validatedLocation.displayName || resolvedDestinationName;
+        const resolvedDestinationName = destinationInput;
+        const resolvedDestinationLabel = destinationInput;
 
         const { destDoc, dbAttractions } = await getDatabaseAttractions(resolvedDestinationName);
-        const curatedPlaces = getCuratedPlacesForDestination(resolvedDestinationName) || getCuratedPlacesForDestination(destinationInput);
+        const curatedPlaces = getCuratedPlacesForDestination(resolvedDestinationName);
         let openTripResult = null;
 
-        if (curatedPlaces && curatedPlaces.length) {
-            console.log('Using curated data for:', resolvedDestinationName);
-
-            if (curatedPlaces.length < MIN_VALID_ATTRACTIONS) {
-                return res.status(400).json({
-                    error: 'NO_ITINERARY',
-                    message: 'Not enough attractions found for this destination. Try reducing days or choosing another place.'
-                });
-            }
-
-            const destinationMeta = {
-                name: destDoc?.name || resolvedDestinationName,
-                country: destDoc?.country || validatedLocation.country || 'Global',
-                image: destDoc?.image || validatedLocation.image || curatedPlaces[0].image,
-                coordinates: validatedLocation.lat != null && validatedLocation.lon != null
-                    ? { lat: validatedLocation.lat, lon: validatedLocation.lon }
-                    : null,
-                formattedName: resolvedDestinationLabel
-            };
-
-            const itineraries = await hydrateItineraryImages(
-                generateItineraryFromCurated(destinationMeta.name, curatedPlaces, days, budget, preferenceInput)
-            );
-
-            console.log('Days requested:', days);
-            console.log('Generated days:', itineraries[0]?.daysPlan?.length || 0);
-            console.log('Itinerary count:', itineraries.length);
-
-            return res.json({
-                destination: destinationMeta,
-                days,
-                budget,
-                itineraries
-            });
-        }
-
         try {
-            openTripResult = validatedLocation.lat != null && validatedLocation.lon != null
-                ? await getAttractionsByPlace(resolvedDestinationName)
-                : null;
+            openTripResult = await getAttractionsByPlace(resolvedDestinationName);
             if (openTripResult) {
-                console.log('[trip] coords:', openTripResult.coords);
-                console.log('Raw attractions:', openTripResult.rawAttractions.length);
-                console.log('[trip] attractions:', openTripResult.rawAttractions.length);
-                console.log('[trip] cleaned data:', openTripResult.cleanedAttractions.length);
-                console.log('Using API data:', openTripResult.cleanedAttractions.length);
+                console.log('Coords:', openTripResult.coords?.lat, openTripResult.coords?.lon);
+                console.log('Places found:', openTripResult.rawAttractions.length);
                 console.log('Images fetched:', openTripResult.imagesCount || 0);
             }
         } catch (error) {
@@ -882,16 +848,16 @@ exports.generateTrip = async (req, res) => {
         ));
         const cleaned = uniqueByName(detailedPlaces);
         const validDbPlaces = uniqueByName((dbAttractions || []).filter(isValidPlace));
+        const validCuratedPlaces = uniqueByName((curatedPlaces || []).filter(isValidPlace));
 
         console.log('Cleaned:', cleaned.length);
 
-        const sourcePlaces = cleaned.length > 0 ? cleaned : validDbPlaces;
+        let sourcePlaces = cleaned.length > 0
+            ? cleaned
+            : (validDbPlaces.length > 0 ? validDbPlaces : validCuratedPlaces);
 
-        if (!sourcePlaces.length || sourcePlaces.length < MIN_VALID_ATTRACTIONS) {
-            return res.status(400).json({
-                error: 'NO_ITINERARY',
-                message: 'Not enough attractions found for this destination. Try reducing days or choosing another place.'
-            });
+        if (sourcePlaces.length === 0) {
+            sourcePlaces = buildGenericFallbackPlaces(resolvedDestinationName, days);
         }
 
         const split = splitPlacesByKinds(sourcePlaces);
@@ -910,13 +876,11 @@ exports.generateTrip = async (req, res) => {
 
         const destinationMeta = {
             name: destDoc?.name || resolvedDestinationName,
-            country: destDoc?.country || validatedLocation.country || openTripResult?.coords?.country || 'Global',
-            image: destDoc?.image || validatedLocation.image || 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=1000',
-            coordinates: validatedLocation.lat != null && validatedLocation.lon != null
-                ? { lat: validatedLocation.lat, lon: validatedLocation.lon }
-                : (openTripResult?.coords
-                    ? { lat: openTripResult.coords.lat, lon: openTripResult.coords.lon }
-                    : null),
+            country: destDoc?.country || openTripResult?.coords?.country || 'Global',
+            image: destDoc?.image || validCuratedPlaces[0]?.image || 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=1000',
+            coordinates: openTripResult?.coords
+                ? { lat: openTripResult.coords.lat, lon: openTripResult.coords.lon }
+                : null,
             formattedName: resolvedDestinationLabel
                 
         };
@@ -936,6 +900,8 @@ exports.generateTrip = async (req, res) => {
         console.log('Itinerary count:', itineraries.length);
 
         const responsePayload = {
+            success: true,
+            usedFallback: cleaned.length === 0 && validDbPlaces.length === 0 && validCuratedPlaces.length === 0,
             destination: destinationMeta,
             days,
             budget,
