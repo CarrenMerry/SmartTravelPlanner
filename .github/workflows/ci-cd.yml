@@ -82,7 +82,7 @@ jobs:
         id: backend-tests
         shell: bash
         run: |
-          if npm pkg get scripts.test | grep -qv "null"; then
+          if node -e "const pkg=require('./package.json'); process.exit(pkg.scripts && typeof pkg.scripts.test === 'string' && pkg.scripts.test.trim() ? 0 : 1)"; then
             echo "has_test_script=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_test_script=false" >> "$GITHUB_OUTPUT"
