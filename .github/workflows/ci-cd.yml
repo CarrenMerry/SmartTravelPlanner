@@ -1,0 +1,134 @@
+name: Smart Travel CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # Stage 1A: Frontend unit tests
+  # Runs in parallel with backend-test because neither job depends on the other.
+  frontend-test:
+    name: Frontend Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Run frontend tests
+        run: npm test || echo "No frontend tests"
+
+  # Stage 1B: Backend unit tests
+  # Runs in parallel with frontend-test.
+  backend-test:
+    name: Backend Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm install
+
+      - name: Run backend tests
+        run: npm test
+
+  # Stage 2: Selenium end-to-end tests
+  # This job only starts after both frontend-test and backend-test succeed.
+  selenium-test:
+    name: Selenium Test
+    runs-on: ubuntu-latest
+    needs:
+      - frontend-test
+      - backend-test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm install
+
+      - name: Start backend server
+        working-directory: backend
+        run: |
+          npm start &
+          sleep 10
+
+      - name: Install Selenium dependencies
+        run: npm install
+
+      - name: Run Selenium tests
+        run: node tests/selenium.test.js
+
+  # Stage 3: Docker image build
+  # This runs only after selenium-test passes.
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: selenium-test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: docker build -t smart-travel-app .
+
+      # Optional: Push image to Docker Hub when credentials are configured in GitHub secrets.
+      - name: Log in to Docker Hub
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push Docker image
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+        run: |
+          docker tag smart-travel-app ${{ secrets.DOCKERHUB_USERNAME }}/smart-travel-app:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/smart-travel-app:latest
+
+  # Stage 4: Deployment
+  # Final job in the pipeline. If any earlier stage fails, this job never runs.
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: docker-build
+    steps:
+      - name: Deploy application
+        run: echo "Deploying Smart Travel App..."

@@ -14,7 +14,7 @@ const navbar = document.querySelector('.navbar');
 // Fetch dynamic data from the backend API
 async function fetchDestinations() {
     try {
-        const res = await fetch('http://localhost:5000/api/destinations');
+        const res = await fetch('/api/destinations');
         const data = await res.json();
         
         // Map backend collection to frontend structure with fallbacks for older DB entries
@@ -75,7 +75,7 @@ async function fetchDestinations() {
             initUI();
         }
     } catch (err) {
-        console.error("Error fetching destinations. Make sure the Node server is running on port 5000.", err);
+        console.error("Error fetching destinations. Make sure the frontend is running on port 5000 and the backend is reachable through /api.", err);
     }
 }
 
