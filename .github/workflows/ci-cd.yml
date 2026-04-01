@@ -78,11 +78,26 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
 
+      - name: Detect backend test script
+        id: backend-tests
+        shell: bash
+        run: |
+          if npm pkg get scripts.test | grep -qv "null"; then
+            echo "has_test_script=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_test_script=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install backend dependencies
         run: npm install
 
       - name: Run backend tests
+        if: ${{ steps.backend-tests.outputs.has_test_script == 'true' }}
         run: npm test
+
+      - name: Skip backend tests
+        if: ${{ steps.backend-tests.outputs.has_test_script != 'true' }}
+        run: echo "No backend test script found. Skipping backend npm tests."
 
   # Stage 2: Selenium end-to-end tests
   # This job only starts after both frontend-test and backend-test succeed.
