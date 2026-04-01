@@ -157,8 +157,8 @@
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('logEmail').value;
-            const password = document.getElementById('logPassword').value;
+            const email = document.getElementById('logEmail').value.trim().toLowerCase();
+            const password = document.getElementById('logPassword').value.trim();
 
             if (!validateEmail(email)) {
                 showNotification("Please enter a valid email address.");

@@ -2,7 +2,13 @@ const User = require('../models/User');
 
 exports.register = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const name = (req.body.name || '').trim();
+        const email = (req.body.email || '').trim().toLowerCase();
+        const password = (req.body.password || '').trim();
+
+        if (!name || !email || !password) {
+            return res.status(400).json({ error: "Name, email, and password are required" });
+        }
         
         // Basic check for existing user
         let user = await User.findOne({ email });
@@ -20,11 +26,17 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const email = (req.body.email || '').trim().toLowerCase();
+        const password = (req.body.password || '').trim();
+
+        if (!email || !password) {
+            return res.status(400).json({ error: "Email and password are required" });
+        }
+
         const user = await User.findOne({ email });
         
         // Match plaintext password
-        if (!user || user.password !== password) {
+        if (!user || (user.password || '').trim() !== password) {
             return res.status(401).json({ error: "Invalid credentials" });
         }
         res.json({ message: "Login successful", user: { id: user._id, name: user.name, role: user.role } });
