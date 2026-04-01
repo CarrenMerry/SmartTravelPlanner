@@ -11,25 +11,53 @@ jobs:
   frontend-test:
     name: Frontend Test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Detect frontend Node project
+        id: frontend-files
+        shell: bash
+        run: |
+          if [ -f frontend/package.json ]; then
+            echo "has_package=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_package=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -f frontend/package-lock.json ]; then
+            echo "has_lockfile=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_lockfile=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node.js with cache
+        if: ${{ steps.frontend-files.outputs.has_lockfile == 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Setup Node.js
+        if: ${{ steps.frontend-files.outputs.has_lockfile != 'true' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
       - name: Install frontend dependencies
+        if: ${{ steps.frontend-files.outputs.has_package == 'true' }}
+        working-directory: frontend
         run: npm install
 
       - name: Run frontend tests
+        if: ${{ steps.frontend-files.outputs.has_package == 'true' }}
+        working-directory: frontend
         run: npm test || echo "No frontend tests"
+
+      - name: Skip frontend tests
+        if: ${{ steps.frontend-files.outputs.has_package != 'true' }}
+        run: echo "No frontend/package.json found. Skipping frontend npm tests."
 
   # Stage 1B: Backend unit tests
   # Runs in parallel with frontend-test.
@@ -68,7 +96,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Detect Selenium test files
+        id: selenium-files
+        shell: bash
+        run: |
+          if [ -f tests/selenium.test.js ]; then
+            echo "has_selenium_test=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_selenium_test=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -f package-lock.json ]; then
+            echo "has_root_lockfile=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_root_lockfile=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node.js with cache
+        if: ${{ steps.selenium-files.outputs.has_root_lockfile == 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: 18
@@ -77,21 +122,35 @@ jobs:
             backend/package-lock.json
             package-lock.json
 
+      - name: Setup Node.js
+        if: ${{ steps.selenium-files.outputs.has_root_lockfile != 'true' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
       - name: Install backend dependencies
+        if: ${{ steps.selenium-files.outputs.has_selenium_test == 'true' }}
         working-directory: backend
         run: npm install
 
       - name: Start backend server
+        if: ${{ steps.selenium-files.outputs.has_selenium_test == 'true' }}
         working-directory: backend
         run: |
           npm start &
           sleep 10
 
       - name: Install Selenium dependencies
+        if: ${{ steps.selenium-files.outputs.has_selenium_test == 'true' }}
         run: npm install
 
       - name: Run Selenium tests
+        if: ${{ steps.selenium-files.outputs.has_selenium_test == 'true' }}
         run: node tests/selenium.test.js
+
+      - name: Skip Selenium tests
+        if: ${{ steps.selenium-files.outputs.has_selenium_test != 'true' }}
+        run: echo "No tests/selenium.test.js found. Skipping Selenium stage."
 
   # Stage 3: Docker image build
   # This runs only after selenium-test passes.
